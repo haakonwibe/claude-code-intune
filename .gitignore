@@ -1,0 +1,63 @@
+# IntuneWinAppUtil output
+*.intunewin
+build/
+Output/
+output/
+**/Output/
+**/output/
+
+# IntuneWinAppUtil tool itself (download separately, don't vendor)
+IntuneWinAppUtil.exe
+
+# Local tooling manifest written by source\Update-Tooling.ps1
+source/tooling-versions.json
+
+# Local installer manifest written by source\Update-Installers.ps1
+source/installer-versions.json
+
+# Bundled per-app installers fetched by source\Update-Installers.ps1.
+# These ride inside the .intunewin and are gitignored — each clone fetches
+# its own. Claude Code's package/ holds no installer (its bootstrap is
+# downloaded at install time), so these patterns leave it untouched.
+apps/*/package/*.exe
+apps/*/package/*.msi
+
+# PowerShell logs and transcripts
+*.log
+*.txt.log
+
+# Local lab artifacts
+*.local.ps1
+local-test/
+scratch/
+
+# VS Code workspace
+.vscode/*
+!.vscode/settings.json
+!.vscode/extensions.json
+
+# Claude Code session state
+.claude/
+.claude.json
+
+# OS noise
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# Editor backups
+*~
+*.bak
+*.swp
+
+# Secrets and tenant-specific values (defense in depth, in case anything slips in)
+*.secret
+*secrets*
+.env
+.env.*
+!.env.example
+config.local.*
+appsettings.local.*
+
+# Tenant-specific Intune exports (if you ever export app definitions)
+*-tenant-export.json
