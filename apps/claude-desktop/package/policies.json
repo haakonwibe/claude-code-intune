@@ -1,0 +1,9 @@
+{
+  "disableAutoUpdates": 1,
+  "autoUpdaterEnforcementHours": 24,
+  "isClaudeCodeForDesktopEnabled": 1,
+  "isDesktopExtensionEnabled": 1,
+  "isDesktopExtensionDirectoryEnabled": 1,
+  "isLocalDevMcpEnabled": 1,
+  "secureVmFeaturesEnabled": 1
+}

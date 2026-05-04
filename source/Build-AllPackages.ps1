@@ -1,13 +1,14 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Build .intunewin packages for all four apps in one shot.
+    Build .intunewin packages for all apps in the kit in one shot.
 
 .DESCRIPTION
-    Runs source\IntuneWinAppUtil.exe against apps\<app>\package for each
-    of the four apps and writes the result to build\<app>. Equivalent to
-    typing the four per-app commands from docs\intune-configuration.md
-    section 1 by hand, in sequence.
+    Runs source\IntuneWinAppUtil.exe against each app's
+    apps\<app>\package\ folder and writes the result to
+    build\<app>\Install.intunewin. Equivalent to typing the per-app
+    commands from docs\intune-configuration.md section 1 by hand, in
+    sequence.
 
     Per app:
       - Any prior .intunewin in build\<app>\ is removed first, so
@@ -39,7 +40,10 @@ if (-not (Test-Path -LiteralPath $tool)) {
     throw "IntuneWinAppUtil.exe not found at '$tool'. Run .\source\Update-Tooling.ps1 first."
 }
 
-$apps = @('claude-code','git-for-windows','vscode','powershell-7')
+# Per-app config. Source folder is apps\<app>\package\ for every app;
+# this list controls which apps get built and in what order.
+$apps = @('claude-code', 'git-for-windows', 'vscode', 'powershell-7', 'claude-desktop')
+
 foreach ($app in $apps) {
     $source = Join-Path -Path $repoRoot -ChildPath "apps\$app\package"
     $out    = Join-Path -Path $repoRoot -ChildPath "build\$app"
@@ -87,4 +91,4 @@ foreach ($app in $apps) {
 }
 
 Write-Host ''
-Write-Host '[Build-AllPackages] Done. Four packages built under build\<app>\.'
+Write-Host ("[Build-AllPackages] Done. {0} packages built under build\<app>\." -f $apps.Count)

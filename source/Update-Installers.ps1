@@ -1,9 +1,10 @@
 #Requires -Version 5.1
 <#
 .SYNOPSIS
-    Fetch the latest direct installer for each of the three system-context
-    apps in the kit (Git for Windows, VS Code System, PowerShell 7) and
-    drop them into apps\<app>\package\.
+    Fetch the latest installer or MSIX payload for each of the four
+    payload-bundling apps in the kit (Git for Windows, VS Code System,
+    PowerShell 7, Claude Desktop) and drop each one into its
+    apps\<app>\package\ folder.
 
 .DESCRIPTION
     Goes together with source\Update-Tooling.ps1. Where Update-Tooling.ps1
@@ -23,18 +24,28 @@
                         a 'PowerShell-*-win-x64.msi'. /releases/latest is
                         not reliable here - Microsoft sometimes pushes
                         previews to that endpoint.
+      claude-desktop  : https://claude.ai/api/desktop/win32/x64/msix/latest/redirect
+                        302s to a versioned MSIX on Anthropic's CDN.
+                        We follow the redirect to capture both the
+                        resolved URL (manifest) and the version, parsed
+                        from the URL path segment immediately before the
+                        filename. Saved locally under the fixed name
+                        'Claude.msix' inside apps\claude-desktop\package\.
+                        arm64 equivalent is out of scope for actual
+                        deployment but documented in
+                        Get-ClaudeDesktopAsset for future reference.
 
     Each downloaded installer is Authenticode-verified before it leaves
     the staging directory. Status must be 'Valid' AND the signer's
     Subject must match an app-specific pattern (see $specs below). If
-    verification fails the staged file never reaches the package folder,
+    verification fails the staged file never reaches the bundle folder,
     so prior bundled installers are left untouched. Mirrors the pattern
     in source\Update-Tooling.ps1 for IntuneWinAppUtil.exe.
 
-    Each app's package\ folder is cleaned of any prior installer match
-    before the new file lands, so a stale older version cannot ride
-    inside the next .intunewin alongside the current one. The bundled
-    installer files are gitignored.
+    Each app's apps\<app>\package\ folder is cleaned of any prior
+    installer match before the new file lands, so a stale older
+    version cannot ride inside the next .intunewin alongside the
+    current one. The bundled installer files are gitignored.
 
     On success, source\installer-versions.json is rewritten with a row
     per app (version, filename, source URL, download timestamp). The
@@ -220,6 +231,66 @@ function Get-VSCodeStableAsset {
     }
 }
 
+function Get-ClaudeDesktopAsset {
+<#
+.SYNOPSIS
+    Resolve the latest Claude Desktop MSIX (x64) URL.
+
+.DESCRIPTION
+    https://claude.ai/api/desktop/win32/x64/msix/latest/redirect
+    serves a 302 to a versioned MSIX URL on Anthropic's CDN of the
+    form
+    https://downloads.claude.ai/releases/win32/x64/<version>/Claude-<hash>.msix.
+    We follow the redirect with GET (Anthropic's redirect endpoint
+    rejects HEAD), capture ResponseUri, and pull the version out of
+    the URL path - the path segment immediately before the filename.
+
+    Always saves locally as the fixed name 'Claude.msix' (not the
+    versioned upstream filename) inside apps\claude-desktop\package\.
+#>
+    [CmdletBinding()]
+    [OutputType([hashtable])]
+    param()
+
+    # arm64 (out of scope; kit is x64-only): https://claude.ai/api/desktop/win32/arm64/msix/latest/redirect
+    $aliasUrl = 'https://claude.ai/api/desktop/win32/x64/msix/latest/redirect'
+    Write-Step ("Resolving Claude Desktop redirect: {0}" -f $aliasUrl)
+
+    # GET, not HEAD: Anthropic's redirect endpoint rejects HEAD. The
+    # response body is discarded - we only need the redirected URL.
+    $req = [System.Net.HttpWebRequest]::Create($aliasUrl)
+    $req.AllowAutoRedirect            = $true
+    $req.MaximumAutomaticRedirections = 5
+    $req.UserAgent                    = $script:UserAgent
+    $req.Method                       = 'GET'
+
+    $resp = $req.GetResponse()
+    try {
+        $finalUri = [Uri]$resp.ResponseUri
+    } finally {
+        $resp.Close()
+    }
+
+    $resolvedFilename = [System.IO.Path]::GetFileName($finalUri.AbsolutePath)
+
+    # Version is in the URL path segment before the filename, e.g.
+    #   /releases/win32/x64/1.5354.0/Claude-<hash>.msix
+    # Try the path first; fall back to filename matching only if the
+    # path layout ever changes.
+    $version = 'unknown'
+    if ($finalUri.AbsolutePath -match '/(\d+\.\d+\.\d+)/') {
+        $version = $Matches[1]
+    } elseif ($resolvedFilename -match '(\d+\.\d+(?:\.\d+){0,2})') {
+        $version = $Matches[1]
+    }
+
+    return @{
+        Url      = [string]$finalUri
+        Version  = $version
+        Filename = 'Claude.msix'
+    }
+}
+
 function Test-SignedBinary {
 <#
 .SYNOPSIS
@@ -351,6 +422,15 @@ $specs = @(
         Resolver              = { Get-GitHubReleaseAsset -Owner 'PowerShell' -Repo 'PowerShell' -AssetPattern 'PowerShell-*-win-x64.msi' -StableOnly }
         CleanupGlob           = 'PowerShell-*-win-x64.msi'
         ExpectedSignerPattern = 'CN=Microsoft Corporation'
+    },
+    @{
+        App                   = 'claude-desktop'
+        Resolver              = { Get-ClaudeDesktopAsset }
+        CleanupGlob           = 'Claude.msix'
+        # Anthropic signs Claude Desktop with an Azure Trusted Signing
+        # certificate (CA-trusted, short-lived). Match on the publisher
+        # name only - the full Subject rotates with each cert renewal.
+        ExpectedSignerPattern = 'Anthropic'
     }
 )
 

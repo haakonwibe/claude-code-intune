@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft-07/schema#",
+  "$id": "https://hawkweave.example/schemas/claude-desktop-policies.schema.json",
+  "title": "Claude Desktop policies",
+  "description": "Whitelist of HKLM policy values that Apply-Policies.ps1 writes for Claude Desktop. Each property name is a value name under the Anthropic policy registry root; each value is a non-negative integer that is written as a REG_DWORD on the device.",
+
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "disableAutoUpdates",
+    "autoUpdaterEnforcementHours",
+    "isClaudeCodeForDesktopEnabled",
+    "isDesktopExtensionEnabled",
+    "isDesktopExtensionDirectoryEnabled",
+    "isLocalDevMcpEnabled",
+    "secureVmFeaturesEnabled"
+  ],
+
+  "properties": {
+    "disableAutoUpdates": {
+      "description": "1 disables Claude Desktop's in-app auto-updater so updates are managed exclusively through Intune. 0 leaves auto-update enabled.",
+      "type": "integer",
+      "enum": [0, 1]
+    },
+    "autoUpdaterEnforcementHours": {
+      "description": "Maximum hours an open Claude Desktop session may run between auto-update checks. Bounded 1..72.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 72
+    },
+    "isClaudeCodeForDesktopEnabled": {
+      "description": "1 enables the Claude Code-for-Desktop integration surface inside Claude Desktop.",
+      "type": "integer",
+      "enum": [0, 1]
+    },
+    "isDesktopExtensionEnabled": {
+      "description": "1 enables Desktop Extensions (the extensibility surface for in-app extensions).",
+      "type": "integer",
+      "enum": [0, 1]
+    },
+    "isDesktopExtensionDirectoryEnabled": {
+      "description": "1 enables the Desktop Extension directory (the in-app browser of available extensions).",
+      "type": "integer",
+      "enum": [0, 1]
+    },
+    "isLocalDevMcpEnabled": {
+      "description": "1 enables the local-developer MCP transport surface (filesystem-served MCP servers running on the device).",
+      "type": "integer",
+      "enum": [0, 1]
+    },
+    "secureVmFeaturesEnabled": {
+      "description": "1 enables the Cowork secure-VM feature gate. Has no effect unless the Virtual Machine Platform Windows feature is also enabled (see -EnableCowork on Install.ps1).",
+      "type": "integer",
+      "enum": [0, 1]
+    }
+  }
+}
